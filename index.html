@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Net Worth Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#0d1117; --panel:#161b22; --panel2:#1c2129; --border:#2d333b;
+  --text:#e6edf3; --muted:#8b949e; --accent:#4f9cf9; --green:#3fb950;
+  --red:#f85149; --gold:#d4a72c;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;min-height:100vh}
+.hidden{display:none!important}
+button{cursor:pointer;font-family:inherit}
+input,select,textarea{font-family:inherit;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px;font-size:14px;width:100%}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
+label{font-size:12px;color:var(--muted);display:block;margin:12px 0 4px;text-transform:uppercase;letter-spacing:.5px}
+
+/* Login */
+.gate{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+.gate-card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:40px;width:100%;max-width:400px;text-align:center}
+.gate-card h1{font-size:22px;margin-bottom:6px}
+.gate-card p{color:var(--muted);font-size:13px;margin-bottom:20px}
+.gate-card .logo{font-size:40px;margin-bottom:12px}
+.btn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:11px 18px;font-size:14px;font-weight:600;width:100%;margin-top:16px}
+.btn:hover{filter:brightness(1.1)}
+.btn-sm{width:auto;padding:8px 14px;font-size:13px;margin-top:0}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted)}
+.btn-danger{background:transparent;border:1px solid var(--red);color:var(--red)}
+.err{color:var(--red);font-size:13px;margin-top:10px;min-height:16px}
+
+/* App shell */
+.app{max-width:1100px;margin:0 auto;padding:20px 16px 60px}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px}
+.topbar h1{font-size:18px}
+.topbar .right{display:flex;gap:8px;align-items:center}
+.sync{font-size:12px;color:var(--muted);padding:5px 10px;border-radius:20px;border:1px solid var(--border)}
+.sync.ok{color:var(--green);border-color:var(--green)}
+.sync.err{color:var(--red);border-color:var(--red)}
+.sync.busy{color:var(--gold);border-color:var(--gold)}
+
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px}
+.stat{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px}
+.stat .lbl{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.stat .val{font-size:24px;font-weight:700;margin-top:6px}
+.stat .sub{font-size:12px;margin-top:4px;color:var(--muted)}
+.pos{color:var(--green)} .neg{color:var(--red)}
+.stat.hero{background:linear-gradient(135deg,#1a2c4e,#161b22);border-color:#2f4b7c}
+.stat.hero .val{font-size:30px;color:#79b8ff}
+
+/* Tabs */
+.tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.tab{background:transparent;border:1px solid var(--border);color:var(--muted);padding:8px 16px;border-radius:20px;font-size:13px}
+.tab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* Panels */
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px}
+.panel h2{font-size:15px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:760px){.charts{grid-template-columns:1fr}}
+.chart-box{position:relative;height:280px}
+
+/* Table */
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;padding:8px;border-bottom:1px solid var(--border)}
+td{padding:10px 8px;border-bottom:1px solid var(--border)}
+tr:last-child td{border-bottom:none}
+td.num,th.num{text-align:right}
+.cat-chip{font-size:11px;padding:3px 8px;border-radius:10px;background:var(--panel2);border:1px solid var(--border);color:var(--muted);white-space:nowrap}
+.row-actions button{background:none;border:none;color:var(--muted);font-size:15px;padding:4px}
+.row-actions button:hover{color:var(--text)}
+.empty{color:var(--muted);text-align:center;padding:30px;font-size:14px}
+
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+.modal{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:24px;width:100%;max-width:440px;max-height:90vh;overflow-y:auto}
+.modal h3{font-size:16px;margin-bottom:4px}
+.modal .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.modal-btns{display:flex;gap:10px;margin-top:20px}
+.hint{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5}
+.hint a{color:var(--accent)}
+.table-wrap{overflow-x:auto}
+</style>
+</head>
+<body>
+
+<!-- ===== PASSWORD GATE ===== -->
+<div id="gate" class="gate">
+  <div class="gate-card">
+    <div class="logo">&#128176;</div>
+    <h1>Net Worth Tracker</h1>
+    <p>Enter your password to unlock</p>
+    <input type="password" id="pw" placeholder="Password" autofocus>
+    <button class="btn" onclick="login()">Unlock</button>
+    <div class="err" id="pwErr"></div>
+  </div>
+</div>
+
+<!-- ===== GITHUB SETUP ===== -->
+<div id="setup" class="gate hidden">
+  <div class="gate-card" style="text-align:left;max-width:460px">
+    <h1 style="text-align:center">&#128279; Connect your data vault</h1>
+    <p style="text-align:center">One-time setup — stored only in this browser, encrypted with your password.</p>
+    <label>GitHub username</label>
+    <input id="ghUser" placeholder="e.g. arpit484">
+    <label>Private data repository</label>
+    <input id="ghRepo" value="networth-data">
+    <label>GitHub personal access token</label>
+    <input id="ghToken" type="password" placeholder="github_pat_...">
+    <div class="hint">Create a <b>fine-grained token</b> at GitHub &rarr; Settings &rarr; Developer settings &rarr; Fine-grained tokens. Give it access to <b>only</b> your data repo with <b>Contents: Read &amp; write</b> permission.</div>
+    <button class="btn" onclick="saveSetup()">Connect</button>
+    <div class="err" id="setupErr"></div>
+  </div>
+</div>
+
+<!-- ===== MAIN APP ===== -->
+<div id="app" class="app hidden">
+  <div class="topbar">
+    <h1>&#128176; Net Worth Tracker</h1>
+    <div class="right">
+      <span class="sync" id="syncStatus">idle</span>
+      <button class="btn btn-sm btn-ghost" onclick="loadData(true)">&#8635; Refresh</button>
+      <button class="btn btn-sm btn-ghost" onclick="logout()">Lock</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat hero">
+      <div class="lbl">Net Worth</div>
+      <div class="val" id="stNet">—</div>
+      <div class="sub" id="stUpdated"></div>
+    </div>
+    <div class="stat">
+      <div class="lbl">Total Assets</div>
+      <div class="val pos" id="stAssets">—</div>
+      <div class="sub" id="stAssetCount"></div>
+    </div>
+    <div class="stat">
+      <div class="lbl">Liabilities</div>
+      <div class="val neg" id="stLiab">—</div>
+      <div class="sub" id="stLiabCount"></div>
+    </div>
+    <div class="stat">
+      <div class="lbl">Invested vs Current</div>
+      <div class="val" id="stGain">—</div>
+      <div class="sub" id="stGainPct"></div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="dashboard" onclick="showTab('dashboard')">Dashboard</button>
+    <button class="tab" data-tab="assets" onclick="showTab('assets')">Assets</button>
+    <button class="tab" data-tab="liabilities" onclick="showTab('liabilities')">Liabilities</button>
+    <button class="tab" data-tab="settings" onclick="showTab('settings')">Settings</button>
+  </div>
+
+  <div id="tab-dashboard">
+    <div class="charts">
+      <div class="panel"><h2>Asset Allocation</h2><div class="chart-box"><canvas id="pieChart"></canvas></div></div>
+      <div class="panel"><h2>Net Worth Trend</h2><div class="chart-box"><canvas id="lineChart"></canvas></div></div>
+    </div>
+    <div class="panel">
+      <h2>Category Breakdown</h2>
+      <div class="table-wrap"><table id="catTable"></table></div>
+    </div>
+  </div>
+
+  <div id="tab-assets" class="hidden">
+    <div class="panel">
+      <h2>Assets <button class="btn btn-sm" onclick="openAssetModal()">+ Add Asset</button></h2>
+      <div class="table-wrap"><table id="assetTable"></table></div>
+    </div>
+  </div>
+
+  <div id="tab-liabilities" class="hidden">
+    <div class="panel">
+      <h2>Liabilities <button class="btn btn-sm" onclick="openLiabModal()">+ Add Liability</button></h2>
+      <div class="table-wrap"><table id="liabTable"></table></div>
+    </div>
+  </div>
+
+  <div id="tab-settings" class="hidden">
+    <div class="panel">
+      <h2>Settings</h2>
+      <p style="font-size:13px;color:var(--muted);line-height:1.7">
+        Data is stored in your private GitHub repository as <b>data.json</b> and synced automatically after every change.<br>
+        Your GitHub token is encrypted with your password and stored only in this browser.
+      </p>
+      <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+        <button class="btn btn-sm btn-ghost" onclick="reconnect()">Change GitHub connection</button>
+        <button class="btn btn-sm btn-ghost" onclick="exportJson()">Download backup (JSON)</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ASSET MODAL ===== -->
+<div id="assetModal" class="modal-bg hidden">
+  <div class="modal">
+    <h3 id="assetModalTitle">Add Asset</h3>
+    <label>Name</label>
+    <input id="aName" placeholder="e.g. HDFC Nifty 50 Index Fund">
+    <label>Category</label>
+    <select id="aCat"></select>
+    <div class="row2">
+      <div><label>Amount Invested (&#8377;)</label><input id="aInvested" type="number" min="0" placeholder="100000"></div>
+      <div><label>Current Value (&#8377;)</label><input id="aCurrent" type="number" min="0" placeholder="125000"></div>
+    </div>
+    <label>Notes (optional)</label>
+    <input id="aNotes" placeholder="e.g. SIP ₹5,000/month">
+    <div class="modal-btns">
+      <button class="btn" onclick="saveAsset()">Save</button>
+      <button class="btn btn-ghost" onclick="closeModals()">Cancel</button>
+    </div>
+    <div class="err" id="aErr"></div>
+  </div>
+</div>
+
+<!-- ===== LIABILITY MODAL ===== -->
+<div id="liabModal" class="modal-bg hidden">
+  <div class="modal">
+    <h3 id="liabModalTitle">Add Liability</h3>
+    <label>Name</label>
+    <input id="lName" placeholder="e.g. Home Loan — SBI">
+    <label>Category</label>
+    <select id="lCat"></select>
+    <div class="row2">
+      <div><label>Outstanding (&#8377;)</label><input id="lOutstanding" type="number" min="0" placeholder="2500000"></div>
+      <div><label>EMI / month (&#8377;, optional)</label><input id="lEmi" type="number" min="0" placeholder="21000"></div>
+    </div>
+    <label>Notes (optional)</label>
+    <input id="lNotes" placeholder="e.g. 8.5% — ends 2038">
+    <div class="modal-btns">
+      <button class="btn" onclick="saveLiab()">Save</button>
+      <button class="btn btn-ghost" onclick="closeModals()">Cancel</button>
+    </div>
+    <div class="err" id="lErr"></div>
+  </div>
+</div>
+
+<script>
+/* ================= CONFIG ================= */
+const PW_HASH = "76bb202b6b868e16d9ca44b40fa3d8564ec52ad42a96c4fb95b718477493cae8";
+const ASSET_CATS = ["Stocks","Mutual Funds","Crypto","FD / RD","Gold","Real Estate","EPF / PPF / NPS","Bank Balance","Other"];
+const LIAB_CATS  = ["Home Loan","Car Loan","Personal Loan","Education Loan","Credit Card","Other"];
+const CAT_COLORS = ["#4f9cf9","#3fb950","#d4a72c","#a371f7","#f0883e","#f85149","#39c5cf","#8b949e","#db61a2"];
+const DATA_FILE = "data.json";
+
+let sessionPw = null;          // plaintext password kept in memory only
+let gh = null;                 // {user, repo, token}
+let data = { assets: [], liabilities: [], snapshots: [], lastUpdated: null };
+let fileSha = null;
+let pieChart = null, lineChart = null;
+let editingAssetId = null, editingLiabId = null;
+let saveTimer = null;
+
+/* ================= CRYPTO HELPERS ================= */
+async function sha256(str){
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
+  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+async function deriveKey(pw, salt){
+  const mat = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({name:"PBKDF2", salt, iterations:150000, hash:"SHA-256"}, mat,
+    {name:"AES-GCM", length:256}, false, ["encrypt","decrypt"]);
+}
+async function encryptCfg(obj, pw){
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await deriveKey(pw, salt);
+  const ct = await crypto.subtle.encrypt({name:"AES-GCM", iv}, key, new TextEncoder().encode(JSON.stringify(obj)));
+  return JSON.stringify({s:[...salt], i:[...iv], c:[...new Uint8Array(ct)]});
+}
+async function decryptCfg(str, pw){
+  const {s,i,c} = JSON.parse(str);
+  const key = await deriveKey(pw, new Uint8Array(s));
+  const pt = await crypto.subtle.decrypt({name:"AES-GCM", iv:new Uint8Array(i)}, key, new Uint8Array(c));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+
+/* ================= AUTH FLOW ================= */
+async function login(){
+  const pw = document.getElementById("pw").value;
+  if(await sha256(pw) !== PW_HASH){
+    document.getElementById("pwErr").textContent = "Incorrect password";
+    return;
+  }
+  sessionPw = pw;
+  document.getElementById("gate").classList.add("hidden");
+  const cfg = localStorage.getItem("nwt_cfg");
+  if(cfg){
+    try{
+      gh = await decryptCfg(cfg, pw);
+      enterApp();
+      return;
+    }catch(e){ /* corrupted or old password — redo setup */ }
+  }
+  document.getElementById("setup").classList.remove("hidden");
+}
+document.getElementById("pw").addEventListener("keydown", e => { if(e.key==="Enter") login(); });
+
+async function saveSetup(){
+  const user = document.getElementById("ghUser").value.trim();
+  const repo = document.getElementById("ghRepo").value.trim();
+  const token = document.getElementById("ghToken").value.trim();
+  const err = document.getElementById("setupErr");
+  if(!user || !repo || !token){ err.textContent = "All fields are required"; return; }
+  err.textContent = "Checking access…";
+  const r = await fetch(`https://api.github.com/repos/${user}/${repo}`, {headers: ghHeaders(token)});
+  if(!r.ok){ err.textContent = "Cannot access repo — check username, repo name and token permissions."; return; }
+  gh = {user, repo, token};
+  localStorage.setItem("nwt_cfg", await encryptCfg(gh, sessionPw));
+  document.getElementById("setup").classList.add("hidden");
+  enterApp();
+}
+
+function reconnect(){
+  document.getElementById("app").classList.add("hidden");
+  document.getElementById("setup").classList.remove("hidden");
+  if(gh){ document.getElementById("ghUser").value = gh.user; document.getElementById("ghRepo").value = gh.repo; }
+}
+function logout(){ location.reload(); }
+
+/* ================= GITHUB SYNC ================= */
+function ghHeaders(token){
+  return {"Authorization":"Bearer "+(token||gh.token), "Accept":"application/vnd.github+json", "X-GitHub-Api-Version":"2022-11-28"};
+}
+function apiUrl(){ return `https://api.github.com/repos/${gh.user}/${gh.repo}/contents/${DATA_FILE}`; }
+function setSync(state, msg){
+  const el = document.getElementById("syncStatus");
+  el.className = "sync " + state;
+  el.textContent = msg;
+}
+function b64encode(str){ return btoa(unescape(encodeURIComponent(str))); }
+function b64decode(str){ return decodeURIComponent(escape(atob(str))); }
+
+async function loadData(manual){
+  setSync("busy","syncing…");
+  try{
+    const r = await fetch(apiUrl()+"?t="+Date.now(), {headers: ghHeaders()});
+    if(r.status === 404){
+      fileSha = null;
+      setSync("ok","new vault");
+      render();
+      return;
+    }
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    const j = await r.json();
+    fileSha = j.sha;
+    data = JSON.parse(b64decode(j.content.replace(/\n/g,"")));
+    data.assets = data.assets||[]; data.liabilities = data.liabilities||[]; data.snapshots = data.snapshots||[];
+    setSync("ok","synced");
+    render();
+  }catch(e){
+    setSync("err","sync failed");
+    if(manual) alert("Could not load data: "+e.message);
+  }
+}
+
+function queueSave(){
+  render();
+  clearTimeout(saveTimer);
+  setSync("busy","saving…");
+  saveTimer = setTimeout(saveData, 800);
+}
+
+async function saveData(retry){
+  try{
+    snapshotToday();
+    data.lastUpdated = new Date().toISOString();
+    const body = {message: "Update net worth data — "+new Date().toLocaleString("en-IN"),
+                  content: b64encode(JSON.stringify(data, null, 2))};
+    if(fileSha) body.sha = fileSha;
+    const r = await fetch(apiUrl(), {method:"PUT", headers: ghHeaders(), body: JSON.stringify(body)});
+    if(r.status === 409 && !retry){
+      // stale sha — refetch and retry once
+      const g = await fetch(apiUrl()+"?t="+Date.now(), {headers: ghHeaders()});
+      if(g.ok){ fileSha = (await g.json()).sha; return saveData(true); }
+    }
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    fileSha = (await r.json()).content.sha;
+    setSync("ok","saved");
+    renderStats();
+  }catch(e){
+    setSync("err","save failed — retry");
+  }
+}
+
+function snapshotToday(){
+  const today = new Date().toISOString().slice(0,10);
+  const t = totals();
+  data.snapshots = (data.snapshots||[]).filter(s => s.date !== today);
+  data.snapshots.push({date: today, assets: t.assets, liabilities: t.liab, netWorth: t.net});
+  data.snapshots.sort((a,b)=>a.date.localeCompare(b.date));
+  if(data.snapshots.length > 730) data.snapshots = data.snapshots.slice(-730);
+}
+
+/* ================= APP ================= */
+function enterApp(){
+  document.getElementById("app").classList.remove("hidden");
+  fillSelect("aCat", ASSET_CATS);
+  fillSelect("lCat", LIAB_CATS);
+  loadData();
+}
+function fillSelect(id, opts){
+  document.getElementById(id).innerHTML = opts.map(c=>`<option>${c}</option>`).join("");
+}
+function showTab(name){
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active", t.dataset.tab===name));
+  ["dashboard","assets","liabilities","settings"].forEach(t=>
+    document.getElementById("tab-"+t).classList.toggle("hidden", t!==name));
+}
+
+/* ================= CALCULATIONS ================= */
+function totals(){
+  const assets = data.assets.reduce((s,a)=>s+(+a.current||0),0);
+  const invested = data.assets.reduce((s,a)=>s+(+a.invested||0),0);
+  const liab = data.liabilities.reduce((s,l)=>s+(+l.outstanding||0),0);
+  return {assets, invested, liab, net: assets-liab};
+}
+function inr(n){
+  return new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",maximumFractionDigits:0}).format(n||0);
+}
+function shortInr(n){
+  const abs = Math.abs(n);
+  if(abs >= 1e7) return (n/1e7).toFixed(2)+" Cr";
+  if(abs >= 1e5) return (n/1e5).toFixed(2)+" L";
+  if(abs >= 1e3) return (n/1e3).toFixed(1)+" K";
+  return ""+Math.round(n);
+}
+
+/* ================= RENDER ================= */
+function render(){ renderStats(); renderAssets(); renderLiabs(); renderCatTable(); renderCharts(); }
+
+function renderStats(){
+  const t = totals();
+  document.getElementById("stNet").textContent = inr(t.net);
+  document.getElementById("stAssets").textContent = inr(t.assets);
+  document.getElementById("stLiab").textContent = inr(t.liab);
+  document.getElementById("stAssetCount").textContent = data.assets.length + " holdings";
+  document.getElementById("stLiabCount").textContent = data.liabilities.length + " items";
+  const gain = t.assets - t.invested;
+  const g = document.getElementById("stGain");
+  g.textContent = (gain>=0?"+":"")+inr(gain).replace("₹","₹");
+  g.className = "val " + (gain>=0?"pos":"neg");
+  document.getElementById("stGainPct").textContent = t.invested>0 ? ((gain/t.invested*100).toFixed(1)+"% overall return") : "";
+  document.getElementById("stUpdated").textContent = data.lastUpdated ? "Updated "+new Date(data.lastUpdated).toLocaleString("en-IN") : "";
+}
+
+function renderAssets(){
+  const tb = document.getElementById("assetTable");
+  if(!data.assets.length){ tb.innerHTML = `<tr><td class="empty">No assets yet — click “+ Add Asset”.</td></tr>`; return; }
+  let html = `<tr><th>Name</th><th>Category</th><th class="num">Invested</th><th class="num">Current</th><th class="num">Gain</th><th></th></tr>`;
+  for(const a of data.assets){
+    const gain = (+a.current||0)-(+a.invested||0);
+    const pct = a.invested>0 ? " ("+(gain/a.invested*100).toFixed(1)+"%)" : "";
+    html += `<tr>
+      <td><b>${esc(a.name)}</b>${a.notes?`<div style="font-size:12px;color:var(--muted)">${esc(a.notes)}</div>`:""}</td>
+      <td><span class="cat-chip">${esc(a.category)}</span></td>
+      <td class="num">${inr(a.invested)}</td>
+      <td class="num"><b>${inr(a.current)}</b></td>
+      <td class="num ${gain>=0?"pos":"neg"}">${gain>=0?"+":""}${shortInr(gain)}${pct}</td>
+      <td class="row-actions" style="white-space:nowrap">
+        <button title="Edit" onclick="openAssetModal('${a.id}')">&#9998;</button>
+        <button title="Delete" onclick="delAsset('${a.id}')">&#10005;</button>
+      </td></tr>`;
+  }
+  tb.innerHTML = html;
+}
+
+function renderLiabs(){
+  const tb = document.getElementById("liabTable");
+  if(!data.liabilities.length){ tb.innerHTML = `<tr><td class="empty">No liabilities — that's the dream! Click “+ Add Liability” if you have loans.</td></tr>`; return; }
+  let html = `<tr><th>Name</th><th>Category</th><th class="num">Outstanding</th><th class="num">EMI</th><th></th></tr>`;
+  for(const l of data.liabilities){
+    html += `<tr>
+      <td><b>${esc(l.name)}</b>${l.notes?`<div style="font-size:12px;color:var(--muted)">${esc(l.notes)}</div>`:""}</td>
+      <td><span class="cat-chip">${esc(l.category)}</span></td>
+      <td class="num neg"><b>${inr(l.outstanding)}</b></td>
+      <td class="num">${l.emi?inr(l.emi)+"/mo":"—"}</td>
+      <td class="row-actions" style="white-space:nowrap">
+        <button title="Edit" onclick="openLiabModal('${l.id}')">&#9998;</button>
+        <button title="Delete" onclick="delLiab('${l.id}')">&#10005;</button>
+      </td></tr>`;
+  }
+  tb.innerHTML = html;
+}
+
+function catBreakdown(){
+  const map = {};
+  for(const a of data.assets) map[a.category] = (map[a.category]||0)+(+a.current||0);
+  return Object.entries(map).sort((x,y)=>y[1]-x[1]);
+}
+
+function renderCatTable(){
+  const rows = catBreakdown();
+  const tb = document.getElementById("catTable");
+  const total = rows.reduce((s,r)=>s+r[1],0);
+  if(!rows.length){ tb.innerHTML = `<tr><td class="empty">Add assets to see the breakdown.</td></tr>`; return; }
+  let html = `<tr><th>Category</th><th class="num">Value</th><th class="num">Share</th></tr>`;
+  rows.forEach(([cat,val],i)=>{
+    html += `<tr><td><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${CAT_COLORS[i%CAT_COLORS.length]};margin-right:8px"></span>${esc(cat)}</td>
+      <td class="num">${inr(val)}</td><td class="num">${total>0?(val/total*100).toFixed(1):0}%</td></tr>`;
+  });
+  tb.innerHTML = html;
+}
+
+function renderCharts(){
+  const rows = catBreakdown();
+  const ctx1 = document.getElementById("pieChart");
+  if(pieChart) pieChart.destroy();
+  pieChart = new Chart(ctx1, {
+    type:"doughnut",
+    data:{labels:rows.map(r=>r[0]), datasets:[{data:rows.map(r=>r[1]), backgroundColor:CAT_COLORS, borderColor:"#161b22", borderWidth:2}]},
+    options:{maintainAspectRatio:false, plugins:{legend:{position:"right", labels:{color:"#8b949e", boxWidth:12, font:{size:11}}},
+      tooltip:{callbacks:{label:c=>" "+c.label+": ₹"+shortInr(c.parsed)}}}}
+  });
+  const snaps = data.snapshots||[];
+  const ctx2 = document.getElementById("lineChart");
+  if(lineChart) lineChart.destroy();
+  lineChart = new Chart(ctx2, {
+    type:"line",
+    data:{labels:snaps.map(s=>s.date), datasets:[{label:"Net Worth", data:snaps.map(s=>s.netWorth),
+      borderColor:"#4f9cf9", backgroundColor:"rgba(79,156,249,.15)", fill:true, tension:.3, pointRadius:2}]},
+    options:{maintainAspectRatio:false, plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:c=>" ₹"+shortInr(c.parsed.y)}}},
+      scales:{x:{ticks:{color:"#8b949e", maxTicksLimit:8}, grid:{color:"#21262d"}},
+              y:{ticks:{color:"#8b949e", callback:v=>"₹"+shortInr(v)}, grid:{color:"#21262d"}}}}
+  });
+}
+
+function esc(s){ return (s||"").toString().replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+
+/* ================= ASSET CRUD ================= */
+function openAssetModal(id){
+  editingAssetId = id||null;
+  const a = id ? data.assets.find(x=>x.id===id) : null;
+  document.getElementById("assetModalTitle").textContent = a ? "Edit Asset" : "Add Asset";
+  document.getElementById("aName").value = a?a.name:"";
+  document.getElementById("aCat").value = a?a.category:ASSET_CATS[0];
+  document.getElementById("aInvested").value = a?a.invested:"";
+  document.getElementById("aCurrent").value = a?a.current:"";
+  document.getElementById("aNotes").value = a?(a.notes||""):"";
+  document.getElementById("aErr").textContent = "";
+  document.getElementById("assetModal").classList.remove("hidden");
+}
+function saveAsset(){
+  const name = document.getElementById("aName").value.trim();
+  const invested = parseFloat(document.getElementById("aInvested").value)||0;
+  const current = parseFloat(document.getElementById("aCurrent").value);
+  if(!name){ document.getElementById("aErr").textContent="Name is required"; return; }
+  if(isNaN(current)){ document.getElementById("aErr").textContent="Current value is required"; return; }
+  const rec = {name, category: document.getElementById("aCat").value, invested, current,
+               notes: document.getElementById("aNotes").value.trim(), updated: new Date().toISOString()};
+  if(editingAssetId){
+    Object.assign(data.assets.find(x=>x.id===editingAssetId), rec);
+  }else{
+    rec.id = uid(); data.assets.push(rec);
+  }
+  closeModals(); queueSave();
+}
+function delAsset(id){
+  if(!confirm("Delete this asset?")) return;
+  data.assets = data.assets.filter(x=>x.id!==id); queueSave();
+}
+
+/* ================= LIABILITY CRUD ================= */
+function openLiabModal(id){
+  editingLiabId = id||null;
+  const l = id ? data.liabilities.find(x=>x.id===id) : null;
+  document.getElementById("liabModalTitle").textContent = l ? "Edit Liability" : "Add Liability";
+  document.getElementById("lName").value = l?l.name:"";
+  document.getElementById("lCat").value = l?l.category:LIAB_CATS[0];
+  document.getElementById("lOutstanding").value = l?l.outstanding:"";
+  document.getElementById("lEmi").value = l?(l.emi||""):"";
+  document.getElementById("lNotes").value = l?(l.notes||""):"";
+  document.getElementById("lErr").textContent = "";
+  document.getElementById("liabModal").classList.remove("hidden");
+}
+function saveLiab(){
+  const name = document.getElementById("lName").value.trim();
+  const outstanding = parseFloat(document.getElementById("lOutstanding").value);
+  if(!name){ document.getElementById("lErr").textContent="Name is required"; return; }
+  if(isNaN(outstanding)){ document.getElementById("lErr").textContent="Outstanding amount is required"; return; }
+  const rec = {name, category: document.getElementById("lCat").value, outstanding,
+               emi: parseFloat(document.getElementById("lEmi").value)||0,
+               notes: document.getElementById("lNotes").value.trim(), updated: new Date().toISOString()};
+  if(editingLiabId){
+    Object.assign(data.liabilities.find(x=>x.id===editingLiabId), rec);
+  }else{
+    rec.id = uid(); data.liabilities.push(rec);
+  }
+  closeModals(); queueSave();
+}
+function delLiab(id){
+  if(!confirm("Delete this liability?")) return;
+  data.liabilities = data.liabilities.filter(x=>x.id!==id); queueSave();
+}
+
+function closeModals(){
+  document.getElementById("assetModal").classList.add("hidden");
+  document.getElementById("liabModal").classList.add("hidden");
+}
+document.querySelectorAll(".modal-bg").forEach(m=>m.addEventListener("click", e=>{ if(e.target===m) closeModals(); }));
+
+function exportJson(){
+  const blob = new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "networth-backup-"+new Date().toISOString().slice(0,10)+".json";
+  a.click();
+}
+</script>
+</body>
+</html>
