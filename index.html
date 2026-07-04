@@ -310,9 +310,19 @@ async function saveSetup(){
   const token = document.getElementById("ghToken").value.trim();
   const err = document.getElementById("setupErr");
   if(!user || !repo || !token){ err.textContent = "All fields are required"; return; }
+  if(!/^[\x21-\x7e]+$/.test(token)){ err.textContent = "Token contains spaces or hidden characters — re-copy it using GitHub's copy button."; return; }
   err.textContent = "Checking access…";
-  const r = await fetch(`https://api.github.com/repos/${user}/${repo}`, {headers: ghHeaders(token)});
-  if(!r.ok){ err.textContent = "Cannot access repo — check username, repo name and token permissions."; return; }
+  let r;
+  try{
+    r = await fetch(`https://api.github.com/repos/${user}/${repo}`, {headers: ghHeaders(token)});
+  }catch(e){
+    err.textContent = "Network error: "+e.message+" — check your connection and re-copy the token.";
+    return;
+  }
+  if(r.status===401){ err.textContent = "Token rejected (401) — invalid or expired. Generate a new fine-grained token."; return; }
+  if(r.status===403){ err.textContent = "Access denied (403) — token lacks permission for this repo."; return; }
+  if(r.status===404){ err.textContent = "Repo not found (404) — check username & repo name, and that the token has access to it (Contents: Read & write)."; return; }
+  if(!r.ok){ err.textContent = "GitHub error: HTTP "+r.status; return; }
   gh = {user, repo, token};
   localStorage.setItem("nwt_cfg", await encryptCfg(gh, sessionPw));
   document.getElementById("setup").classList.add("hidden");
