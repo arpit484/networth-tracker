@@ -156,6 +156,9 @@ td.num,th.num{text-align:right}
     <button class="tab active" data-tab="dashboard" onclick="showTab('dashboard')">Dashboard</button>
     <button class="tab" data-tab="assets" onclick="showTab('assets')">Assets</button>
     <button class="tab" data-tab="liabilities" onclick="showTab('liabilities')">Liabilities</button>
+    <button class="tab" data-tab="expenses" onclick="showTab('expenses')">Money Flow</button>
+    <button class="tab" data-tab="tax" onclick="showTab('tax')">Tax</button>
+    <button class="tab" data-tab="goals" onclick="showTab('goals')">Goals</button>
     <button class="tab" data-tab="settings" onclick="showTab('settings')">Settings</button>
   </div>
 
@@ -182,6 +185,41 @@ td.num,th.num{text-align:right}
       <h2>Liabilities <button class="btn btn-sm" onclick="openLiabModal()">+ Add Liability</button></h2>
       <div class="table-wrap"><table id="liabTable"></table></div>
     </div>
+  </div>
+
+  <div id="tab-expenses" class="hidden">
+    <div class="stats">
+      <div class="stat"><div class="lbl">This Month In</div><div class="val pos" id="mIncome">—</div></div>
+      <div class="stat"><div class="lbl">This Month Out</div><div class="val neg" id="mExpense">—</div></div>
+      <div class="stat"><div class="lbl">Saved / Invested</div><div class="val" id="mSaved">—</div><div class="sub" id="mSavedPct"></div></div>
+    </div>
+    <div class="panel">
+      <h2>Transactions <span><button class="btn btn-sm btn-ghost" onclick="openTxnModal('income')">+ Income</button> <button class="btn btn-sm" onclick="openTxnModal('expense')">+ Expense</button></span></h2>
+      <div class="table-wrap"><table id="txnTable"></table></div>
+    </div>
+    <div class="panel"><h2>Spending by Category (this month)</h2><div class="chart-box"><canvas id="expChart"></canvas></div></div>
+  </div>
+
+  <div id="tab-tax" class="hidden">
+    <div class="stats">
+      <div class="stat hero"><div class="lbl">Projected Tax FY <span id="taxFy"></span> (New Regime)</div><div class="val" id="taxNew">—</div><div class="sub" id="taxRebateNote"></div></div>
+      <div class="stat"><div class="lbl">Old Regime (comparison)</div><div class="val" id="taxOld">—</div><div class="sub" id="taxAdvice"></div></div>
+      <div class="stat"><div class="lbl">Capital Loss Available</div><div class="val neg" id="taxLoss">—</div><div class="sub">offsets future capital gains</div></div>
+    </div>
+    <div class="panel">
+      <h2>Capital Gains / Loss Ledger <button class="btn btn-sm" onclick="openCgModal()">+ Add Entry</button></h2>
+      <div class="table-wrap"><table id="cgTable"></table></div>
+    </div>
+    <div class="panel">
+      <h2>Tax Planner Insights</h2>
+      <div id="taxInsights" style="font-size:13px;line-height:1.8;color:var(--text)"></div>
+      <div class="hint" style="margin-top:10px">Estimates only, based on your IT slip and FY 2026-27 slabs — not tax advice. Verify on the income tax portal or with a CA before filing.</div>
+    </div>
+  </div>
+
+  <div id="tab-goals" class="hidden">
+    <div id="goalCards"></div>
+    <div class="hint" style="margin-top:4px">Targets are editable — click ✎ on any goal.</div>
   </div>
 
   <div id="tab-settings" class="hidden">
@@ -221,6 +259,60 @@ td.num,th.num{text-align:right}
   </div>
 </div>
 
+<!-- ===== TRANSACTION MODAL ===== -->
+<div id="txnModal" class="modal-bg hidden">
+  <div class="modal">
+    <h3 id="txnModalTitle">Add Expense</h3>
+    <div class="row2">
+      <div><label>Amount (&#8377;)</label><input id="tAmount" type="number" min="0" placeholder="500"></div>
+      <div><label>Date</label><input id="tDate" type="date"></div>
+    </div>
+    <label>Category</label>
+    <select id="tCat"></select>
+    <label>Note (optional)</label>
+    <input id="tNote" placeholder="e.g. Swiggy dinner">
+    <div class="modal-btns">
+      <button class="btn" onclick="saveTxn()">Save</button>
+      <button class="btn btn-ghost" onclick="closeModals()">Cancel</button>
+    </div>
+    <div class="err" id="tErr"></div>
+  </div>
+</div>
+
+<!-- ===== CAPITAL GAINS MODAL ===== -->
+<div id="cgModal" class="modal-bg hidden">
+  <div class="modal">
+    <h3>Add Capital Gain / Loss</h3>
+    <label>Security / Fund name</label>
+    <input id="cgName" placeholder="e.g. KPIT Technologies">
+    <div class="row2">
+      <div><label>Type</label><select id="cgType"><option>STCG</option><option>LTCG</option><option>STCL</option><option>LTCL</option></select></div>
+      <div><label>Financial Year</label><input id="cgFy" placeholder="2026-27"></div>
+    </div>
+    <div class="row2">
+      <div><label>Net Realised (&#8377;, negative for loss)</label><input id="cgAmt" type="number" placeholder="-114995"></div>
+      <div><label>Date</label><input id="cgDate" type="date"></div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn" onclick="saveCg()">Save</button>
+      <button class="btn btn-ghost" onclick="closeModals()">Cancel</button>
+    </div>
+    <div class="err" id="cgErr"></div>
+  </div>
+</div>
+
+<!-- ===== GOAL MODAL ===== -->
+<div id="goalModal" class="modal-bg hidden">
+  <div class="modal">
+    <h3 id="goalModalTitle">Edit Goal</h3>
+    <div id="goalFields"></div>
+    <div class="modal-btns">
+      <button class="btn" onclick="saveGoal()">Save</button>
+      <button class="btn btn-ghost" onclick="closeModals()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== LIABILITY MODAL ===== -->
 <div id="liabModal" class="modal-bg hidden">
   <div class="modal">
@@ -246,8 +338,10 @@ td.num,th.num{text-align:right}
 <script>
 /* ================= CONFIG ================= */
 const PW_HASH = "76bb202b6b868e16d9ca44b40fa3d8564ec52ad42a96c4fb95b718477493cae8";
-const ASSET_CATS = ["Stocks","Mutual Funds","Crypto","FD / RD","Gold","Real Estate","EPF / PPF / NPS","Bank Balance","Other"];
-const LIAB_CATS  = ["Home Loan","Car Loan","Personal Loan","Education Loan","Credit Card","Other"];
+const ASSET_CATS = ["Stocks","Mutual Funds","Crypto","FD / RD","Gold / SGB / Silver","Real Estate / REIT","EPF / PPF / NPS","Bank Balance","Bonds / Debentures","ULIP / Endowment","ESOP / RSU","P2P / Invoice / AIF","Cash","Other"];
+const LIAB_CATS  = ["Home Loan","Car Loan","Personal Loan","Education Loan","Gold Loan","Credit Card","BNPL / Pay Later","Borrowed from Family","Other"];
+const EXP_CATS = ["Food & Dining","Groceries","Rent / Housing","Transport / Fuel","Utilities & Bills","Shopping","Health","Entertainment","Travel","Education","Insurance Premium","EMI Payment","Family Support","Gifts / Donation","Other"];
+const INC_CATS = ["Salary","Bonus / Incentive","Interest","Dividend","Rental","Freelance","Refund / Cashback","Other Income"];
 const CAT_COLORS = ["#4f9cf9","#3fb950","#d4a72c","#a371f7","#f0883e","#f85149","#39c5cf","#8b949e","#db61a2"];
 const DATA_FILE = "data.json";
 
@@ -363,7 +457,7 @@ async function loadData(manual){
     const j = await r.json();
     fileSha = j.sha;
     data = JSON.parse(b64decode(j.content.replace(/\n/g,"")));
-    data.assets = data.assets||[]; data.liabilities = data.liabilities||[]; data.snapshots = data.snapshots||[];
+    normalizeData();
     setSync("ok","synced");
     render();
   }catch(e){
@@ -415,6 +509,7 @@ function enterApp(){
   document.getElementById("app").classList.remove("hidden");
   fillSelect("aCat", ASSET_CATS);
   fillSelect("lCat", LIAB_CATS);
+  normalizeData();
   loadData();
 }
 function fillSelect(id, opts){
@@ -422,8 +517,20 @@ function fillSelect(id, opts){
 }
 function showTab(name){
   document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active", t.dataset.tab===name));
-  ["dashboard","assets","liabilities","settings"].forEach(t=>
+  ["dashboard","assets","liabilities","expenses","tax","goals","settings"].forEach(t=>
     document.getElementById("tab-"+t).classList.toggle("hidden", t!==name));
+}
+
+function normalizeData(){
+  data.assets = data.assets||[]; data.liabilities = data.liabilities||[]; data.snapshots = data.snapshots||[];
+  data.expenses = data.expenses||[]; data.capitalGains = data.capitalGains||[];
+  data.profile = data.profile||{fy:"2026-27", regime:"new", monthlyNetPay:0, salaryIncomeAfterStdDed:0};
+  data.goals = data.goals||{};
+  data.goals.netWorthTarget = data.goals.netWorthTarget||{amount:5000000, by:"2028-12-31"};
+  data.goals.savingsRate = data.goals.savingsRate||{targetPct:40};
+  data.goals.emergencyFund = data.goals.emergencyFund||{target:300000, monthlyExpenseBasis:50000};
+  data.goals.retirement = data.goals.retirement||{corpus:50000000, by:"2055-01-01"};
+  data.version = 2;
 }
 
 /* ================= CALCULATIONS ================= */
@@ -445,7 +552,7 @@ function shortInr(n){
 }
 
 /* ================= RENDER ================= */
-function render(){ renderStats(); renderAssets(); renderLiabs(); renderCatTable(); renderCharts(); }
+function render(){ renderStats(); renderAssets(); renderLiabs(); renderCatTable(); renderCharts(); renderTxns(); renderTax(); renderGoals(); }
 
 function renderStats(){
   const t = totals();
@@ -614,10 +721,206 @@ function delLiab(id){
 }
 
 function closeModals(){
-  document.getElementById("assetModal").classList.add("hidden");
-  document.getElementById("liabModal").classList.add("hidden");
+  document.querySelectorAll(".modal-bg").forEach(m=>m.classList.add("hidden"));
 }
 document.querySelectorAll(".modal-bg").forEach(m=>m.addEventListener("click", e=>{ if(e.target===m) closeModals(); }));
+
+/* ================= TRANSACTIONS (income + expenses) ================= */
+let txnKind = "expense";
+function openTxnModal(kind){
+  txnKind = kind;
+  document.getElementById("txnModalTitle").textContent = kind==="income" ? "Add Income" : "Add Expense";
+  fillSelect("tCat", kind==="income" ? INC_CATS : EXP_CATS);
+  document.getElementById("tAmount").value = "";
+  document.getElementById("tDate").value = new Date().toISOString().slice(0,10);
+  document.getElementById("tNote").value = "";
+  document.getElementById("tErr").textContent = "";
+  document.getElementById("txnModal").classList.remove("hidden");
+}
+function saveTxn(){
+  const amt = parseFloat(document.getElementById("tAmount").value);
+  const date = document.getElementById("tDate").value;
+  if(isNaN(amt) || amt<=0){ document.getElementById("tErr").textContent="Enter a valid amount"; return; }
+  if(!date){ document.getElementById("tErr").textContent="Pick a date"; return; }
+  data.expenses.push({id:uid(), kind:txnKind, amount:amt, date,
+    category: document.getElementById("tCat").value, note: document.getElementById("tNote").value.trim()});
+  closeModals(); queueSave();
+}
+function delTxn(id){ if(confirm("Delete this transaction?")){ data.expenses = data.expenses.filter(x=>x.id!==id); queueSave(); } }
+
+function monthTxns(){
+  const m = new Date().toISOString().slice(0,7);
+  return data.expenses.filter(t=>(t.date||"").startsWith(m));
+}
+let expChart = null;
+function renderTxns(){
+  const list = [...data.expenses].sort((a,b)=>(b.date||"").localeCompare(a.date||"")).slice(0,100);
+  const tb = document.getElementById("txnTable");
+  if(!list.length){ tb.innerHTML = '<tr><td class="empty">No transactions yet. Add expenses/income here, or upload a bank statement in chat with Claude for bulk import.</td></tr>'; }
+  else{
+    let h = '<tr><th>Date</th><th>Category</th><th>Note</th><th class="num">Amount</th><th></th></tr>';
+    for(const t of list){
+      h += `<tr><td>${t.date}</td><td><span class="cat-chip">${esc(t.category)}</span></td><td>${esc(t.note||"")}</td>
+        <td class="num ${t.kind==="income"?"pos":"neg"}">${t.kind==="income"?"+":"−"}${inr(t.amount)}</td>
+        <td class="row-actions"><button onclick="delTxn('${t.id}')">&#10005;</button></td></tr>`;
+    }
+    tb.innerHTML = h;
+  }
+  const mt = monthTxns();
+  const inc = mt.filter(t=>t.kind==="income").reduce((s,t)=>s+t.amount,0) || (data.profile.monthlyNetPay||0);
+  const exp = mt.filter(t=>t.kind!=="income").reduce((s,t)=>s+t.amount,0);
+  const saved = inc - exp;
+  document.getElementById("mIncome").textContent = inr(inc);
+  document.getElementById("mExpense").textContent = inr(exp);
+  const sv = document.getElementById("mSaved");
+  sv.textContent = inr(saved); sv.className = "val " + (saved>=0?"pos":"neg");
+  document.getElementById("mSavedPct").textContent = inc>0 ? (saved/inc*100).toFixed(0)+"% of income (target "+(data.goals.savingsRate.targetPct||40)+"%)" : "";
+  // chart
+  const map = {};
+  mt.filter(t=>t.kind!=="income").forEach(t=>map[t.category]=(map[t.category]||0)+t.amount);
+  const rows = Object.entries(map).sort((x,y)=>y[1]-x[1]);
+  const ctx = document.getElementById("expChart");
+  if(expChart) expChart.destroy();
+  expChart = new Chart(ctx, {type:"bar",
+    data:{labels:rows.map(r=>r[0]), datasets:[{data:rows.map(r=>r[1]), backgroundColor:"#f0883e"}]},
+    options:{maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>" ₹"+shortInr(c.parsed.y)}}},
+      scales:{x:{ticks:{color:"#8b949e", font:{size:10}}, grid:{display:false}}, y:{ticks:{color:"#8b949e", callback:v=>"₹"+shortInr(v)}, grid:{color:"#21262d"}}}}});
+}
+
+/* ================= TAX ENGINE (FY 2026-27 estimates) ================= */
+function slabTax(income, slabs){
+  let tax = 0;
+  for(const [lo, hi, rate] of slabs){
+    if(income > lo) tax += (Math.min(income, hi) - lo) * rate;
+  }
+  return tax;
+}
+const NEW_SLABS = [[0,400000,0],[400000,800000,.05],[800000,1200000,.10],[1200000,1600000,.15],[1600000,2000000,.20],[2000000,2400000,.25],[2400000,Infinity,.30]];
+const OLD_SLABS = [[0,250000,0],[250000,500000,.05],[500000,1000000,.20],[1000000,Infinity,.30]];
+
+function calcTax(){
+  const p = data.profile;
+  const gross = p.grossSalaryProjected||0;
+  // New regime: std deduction 75k, 80CCD(2) allowed
+  const newTI = Math.max(0, gross - 75000 - (p.employerNPS80CCD2||0));
+  let newTax = slabTax(newTI, NEW_SLABS);
+  const rebateNew = newTI <= 1200000;
+  if(rebateNew) newTax = 0;
+  // Old regime: std deduction 50k, 80C capped 1.5L, 80CCD(2)
+  const c80 = Math.min(150000, p.epfContribution||0);
+  const oldTI = Math.max(0, gross - 50000 - c80 - (p.employerNPS80CCD2||0));
+  let oldTax = slabTax(oldTI, OLD_SLABS);
+  if(oldTI <= 500000) oldTax = 0; else oldTax *= 1.04; // cess
+  if(!rebateNew) newTax *= 1.04;
+  return {newTax: Math.round(newTax), oldTax: Math.round(oldTax), newTI, oldTI, rebateNew};
+}
+
+function totalCapLoss(){
+  return data.capitalGains.filter(g=>g.netRealized<0).reduce((s,g)=>s+g.netRealized,0);
+}
+
+function renderTax(){
+  const p = data.profile;
+  const t = calcTax();
+  document.getElementById("taxFy").textContent = p.fy||"2026-27";
+  document.getElementById("taxNew").textContent = inr(t.newTax);
+  document.getElementById("taxOld").textContent = inr(t.oldTax);
+  document.getElementById("taxRebateNote").textContent = t.rebateNew ? "₹0 — 87A rebate applies (taxable income ≤ ₹12L)" : "taxable income ₹"+shortInr(t.newTI);
+  document.getElementById("taxAdvice").textContent = t.newTax<=t.oldTax ? "New regime is better for you ✓" : "Old regime could save "+inr(t.newTax-t.oldTax);
+  const loss = totalCapLoss();
+  document.getElementById("taxLoss").textContent = inr(loss);
+  // ledger
+  const tb = document.getElementById("cgTable");
+  if(!data.capitalGains.length){ tb.innerHTML = '<tr><td class="empty">No realised gains/losses recorded.</td></tr>'; }
+  else{
+    let h = '<tr><th>FY</th><th>Security</th><th>Type</th><th class="num">Net Realised</th><th></th></tr>';
+    for(const g of data.capitalGains){
+      h += `<tr><td>${esc(g.fy)}</td><td><b>${esc(g.security)}</b>${g.notes?`<div style="font-size:11px;color:var(--muted)">${esc(g.notes)}</div>`:""}</td>
+        <td><span class="cat-chip">${esc(g.type)}</span></td>
+        <td class="num ${g.netRealized>=0?"pos":"neg"}">${inr(g.netRealized)}</td>
+        <td class="row-actions"><button onclick="delCg('${g.id}')">&#10005;</button></td></tr>`;
+    }
+    tb.innerHTML = h;
+  }
+  // insights
+  const ins = [];
+  const headroom = 1200000 - t.newTI;
+  if(t.rebateNew && headroom > 0) ins.push("&#9989; You pay <b>zero salary tax</b> under the new regime. You can earn up to <b>"+inr(headroom)+"</b> more taxable income this FY before tax kicks in.");
+  if(loss < 0) ins.push("&#128200; You hold <b>"+inr(-loss)+"</b> of booked capital losses. Any capital gains you realise (e.g. selling Gravita's ₹1.1L profit) are tax-free up to this amount. <b>File ITR by 31 July 2027</b> to keep the carry-forward alive (8 years).");
+  if(loss < 0) ins.push("&#128161; Tax-loss harvesting works in reverse too: you could book part of Gravita's gain now, absorb it against the KPIT loss, and re-buy — resetting your cost basis higher at zero tax cost. Mind the settlement dates.");
+  ins.push("&#127974; Interest from savings/FDs is taxable at slab — under the new regime there's no 80TTA deduction, but with ₹0 tax till ₹12L it currently doesn't cost you anything.");
+  ins.push("&#128188; Your employer NPS (80CCD-2, "+inr(p.employerNPS80CCD2||0)+"/yr) is the main deduction working for you in the new regime — it's already maxed via POWERGRID.");
+  document.getElementById("taxInsights").innerHTML = ins.map(i=>"<p style='margin-bottom:8px'>"+i+"</p>").join("");
+}
+function openCgModal(){
+  document.getElementById("cgName").value=""; document.getElementById("cgFy").value = data.profile.fy||"2026-27";
+  document.getElementById("cgAmt").value=""; document.getElementById("cgDate").value = new Date().toISOString().slice(0,10);
+  document.getElementById("cgErr").textContent="";
+  document.getElementById("cgModal").classList.remove("hidden");
+}
+function saveCg(){
+  const name = document.getElementById("cgName").value.trim();
+  const amt = parseFloat(document.getElementById("cgAmt").value);
+  if(!name || isNaN(amt)){ document.getElementById("cgErr").textContent="Name and amount required"; return; }
+  data.capitalGains.push({id:uid(), fy:document.getElementById("cgFy").value.trim(), security:name,
+    type:document.getElementById("cgType").value, netRealized:amt, date:document.getElementById("cgDate").value, notes:""});
+  closeModals(); queueSave();
+}
+function delCg(id){ if(confirm("Delete this entry?")){ data.capitalGains = data.capitalGains.filter(x=>x.id!==id); queueSave(); } }
+
+/* ================= GOALS ================= */
+function goalProgress(){
+  const t = totals();
+  const g = data.goals;
+  const mt = monthTxns();
+  const inc = mt.filter(x=>x.kind==="income").reduce((s,x)=>s+x.amount,0) || (data.profile.monthlyNetPay||0);
+  const exp = mt.filter(x=>x.kind!=="income").reduce((s,x)=>s+x.amount,0);
+  const savePct = inc>0 ? (inc-exp)/inc*100 : 0;
+  const liquid = data.assets.filter(a=>["Bank Balance","FD / RD","Cash"].includes(a.category)).reduce((s,a)=>s+(+a.current||0),0);
+  return [
+    {key:"netWorthTarget", icon:"&#127942;", name:"Net Worth Milestone", cur:t.net, target:g.netWorthTarget.amount, sub:"by "+(g.netWorthTarget.by||"—"), fields:{amount:"Target (₹)", by:"Target date"}},
+    {key:"savingsRate", icon:"&#128176;", name:"Monthly Savings Rate", cur:savePct, target:g.savingsRate.targetPct, isPct:true, sub:"this month, of "+inr(inc)+" income", fields:{targetPct:"Target %"}},
+    {key:"emergencyFund", icon:"&#128737;", name:"Emergency Fund", cur:liquid, target:g.emergencyFund.target, sub:"liquid assets (bank + FD + cash)", fields:{target:"Target (₹)", monthlyExpenseBasis:"Monthly expenses (₹)"}},
+    {key:"retirement", icon:"&#127958;", name:"Retirement Corpus", cur:t.net, target:g.retirement.corpus, sub:"by "+(g.retirement.by||"—")+" (net worth counted)", fields:{corpus:"Target (₹)", by:"Target date"}}
+  ];
+}
+function renderGoals(){
+  const wrap = document.getElementById("goalCards");
+  wrap.innerHTML = goalProgress().map(g=>{
+    const pct = Math.max(0, Math.min(100, g.target>0 ? g.cur/g.target*100 : 0));
+    const curTxt = g.isPct ? g.cur.toFixed(0)+"%" : inr(g.cur);
+    const tgtTxt = g.isPct ? g.target+"%" : inr(g.target);
+    const on = pct>=100 ? "&#127881; Achieved!" : pct>=60 ? "&#9989; On track" : pct>=30 ? "&#9888;&#65039; Behind — push harder" : "&#128308; Far from target";
+    return `<div class="panel">
+      <h2>${g.icon} ${g.name} <button class="btn btn-sm btn-ghost" onclick="openGoalModal('${g.key}')">&#9998;</button></h2>
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px">
+        <span><b>${curTxt}</b> of ${tgtTxt}</span><span>${on} · ${pct.toFixed(0)}%</span></div>
+      <div style="background:var(--panel2);border-radius:8px;height:10px;overflow:hidden">
+        <div style="width:${pct}%;height:100%;background:${pct>=60?"var(--green)":pct>=30?"var(--gold)":"var(--red)"};border-radius:8px"></div></div>
+      <div style="font-size:12px;color:var(--muted);margin-top:6px">${g.sub}</div>
+    </div>`;
+  }).join("");
+}
+let editingGoalKey = null;
+function openGoalModal(key){
+  editingGoalKey = key;
+  const g = goalProgress().find(x=>x.key===key);
+  document.getElementById("goalModalTitle").textContent = "Edit: "+g.name;
+  document.getElementById("goalFields").innerHTML = Object.entries(g.fields).map(([f,label])=>{
+    const val = data.goals[key][f]||"";
+    const type = f==="by" ? "date" : "number";
+    return `<label>${label}</label><input id="gf-${f}" type="${type}" value="${val}">`;
+  }).join("");
+  document.getElementById("goalModal").classList.remove("hidden");
+}
+function saveGoal(){
+  const g = goalProgress().find(x=>x.key===editingGoalKey);
+  for(const f of Object.keys(g.fields)){
+    const v = document.getElementById("gf-"+f).value;
+    data.goals[editingGoalKey][f] = f==="by" ? v : parseFloat(v)||0;
+  }
+  closeModals(); queueSave();
+}
 
 function exportJson(){
   const blob = new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
